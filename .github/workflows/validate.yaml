@@ -1,0 +1,33 @@
+---
+name: Validate log metadata
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+  # Weekly, so root lists that drifted from the live logs surface without anyone editing here.
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Install tools
+        run: python3 -m pip install --quiet jsonschema cryptography
+
+      - name: Schemas, log IDs, operator list, expiry ranges and live checkpoint origins
+        run: python3 scripts/validate.py --live
+
+      - name: Published root lists match what the logs serve
+        run: |
+          python3 scripts/make_roots.py mercury
+          git diff --exit-code -- crt pem tsv || { echo "::error::roots files differ from the live get-roots; run scripts/make_roots.py mercury and commit"; exit 1; }

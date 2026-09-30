@@ -1,0 +1,24 @@
+{
+  "$schema": "https://googlechrome.github.io/CertificateTransparency/log_schema_v2.json",
+  "log_id": "hx0Yg3GfLR9x4b992PzrdvwzCATmt/IzARzrkBtrKhc=",
+  "key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEeDXzUUKDHSmVFaUt7lZCsL5kZkYVFzc/T53yeLzG5H5mEiABa4X1zxOYHVnbnuOFKWYenQzmMzp1AZx/yiU+8Q==",
+  "friendly_name": "Mercury 2028",
+  "log_spec": "static-ct-api",
+  "mmd_seconds": 60,
+  "intended_use": "production",
+  "temporal_interval": {
+    "start_inclusive": "2028-01-01T00:00:00Z",
+    "end_exclusive": "2029-01-01T00:00:00Z"
+  },
+  "status": "active",
+  "status_timestamp": "2026-09-25T00:00:00Z",
+  "log_software": {
+    "name": "TesseraCT"
+  },
+  "submission_endpoint": {
+    "url": "https://log.mercury.ct.ssl.com/2028/"
+  },
+  "monitoring_endpoint": {
+    "url": "https://mon.mercury.ct.ssl.com/2028/"
+  }
+}
