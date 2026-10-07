@@ -13,6 +13,7 @@ SSL.com's CT logs are powered by [TesseraCT](https://github.com/transparency-dev
 | File | Schema | Purpose |
 |---|---|---|
 | [`json/sslcom-operator.json`](json/sslcom-operator.json) | [operator_list_schema_v1](https://googlechrome.github.io/CertificateTransparency/operator_list_schema_v1.json) | Lists every log below; the URL to give CT log programs |
+| [`json/mercury2026.json`](json/mercury2026.json) | [log_schema_v2](https://googlechrome.github.io/CertificateTransparency/log_schema_v2.json) | Mercury 2026 shard |
 | [`json/mercury2027.json`](json/mercury2027.json) | [log_schema_v2](https://googlechrome.github.io/CertificateTransparency/log_schema_v2.json) | Mercury 2027 shard |
 | [`json/mercury2028.json`](json/mercury2028.json) | [log_schema_v2](https://googlechrome.github.io/CertificateTransparency/log_schema_v2.json) | Mercury 2028 shard |
 
