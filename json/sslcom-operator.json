@@ -2,6 +2,7 @@
   "$schema": "https://googlechrome.github.io/CertificateTransparency/operator_list_schema_v1.json",
   "operator_name": "SSL.com",
   "logs": [
+    "https://raw.githubusercontent.com/SSLcom/CTLogs/main/json/mercury2026.json",
     "https://raw.githubusercontent.com/SSLcom/CTLogs/main/json/mercury2027.json",
     "https://raw.githubusercontent.com/SSLcom/CTLogs/main/json/mercury2028.json"
   ]

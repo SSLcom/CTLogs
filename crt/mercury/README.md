@@ -21,6 +21,7 @@ The first temporally-sharded Mercury logs are applying for inclusion in the Appl
 
 | URL Prefix | Expiry Range<br>Start | Expiry Range<br>End | Public Key (base64) |
 |------------|-----------------------|---------------------|---------------------|
+| https://{log,mon}.mercury.ct.ssl.com/2026/ | 2026-01-01T00:00:00Z | 2026-12-31T23:59:59Z | `MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQc`<br>`DQgAESMidgvn0QuTkoqcX4hrDWaViKV`<br>`Pq9rZ/VLq/6PinMWE1JznhEUOqnzACf`<br>`cx/qjtfUVwLRdoNfS0WE2Qumb21+w==` |
 | https://{log,mon}.mercury.ct.ssl.com/2027/ | 2027-01-01T00:00:00Z | 2027-12-31T23:59:59Z | `MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQc`<br>`DQgAE1QgX4C/iNbrWKSKKcOrVKIRG3c`<br>`jCx3ggkMpvKJcrTdDUVFitZyoPUMBUk`<br>`aQrqur900z+mSGNXjZz4D0V3aVFSQ==` |
 | https://{log,mon}.mercury.ct.ssl.com/2028/ | 2028-01-01T00:00:00Z | 2028-12-31T23:59:59Z | `MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQc`<br>`DQgAEeDXzUUKDHSmVFaUt7lZCsL5kZk`<br>`YVFzc/T53yeLzG5H5mEiABa4X1zxOYH`<br>`VnbnuOFKWYenQzmMzp1AZx/yiU+8Q==` |
 
