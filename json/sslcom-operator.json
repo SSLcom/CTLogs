@@ -4,6 +4,9 @@
   "logs": [
     "https://raw.githubusercontent.com/SSLcom/CTLogs/main/json/mercury2026.json",
     "https://raw.githubusercontent.com/SSLcom/CTLogs/main/json/mercury2027.json",
-    "https://raw.githubusercontent.com/SSLcom/CTLogs/main/json/mercury2028.json"
+    "https://raw.githubusercontent.com/SSLcom/CTLogs/main/json/mercury2028.json",
+    "https://raw.githubusercontent.com/SSLcom/CTLogs/main/json/apollo2027h1.json",
+    "https://raw.githubusercontent.com/SSLcom/CTLogs/main/json/apollo2027h2.json",
+    "https://raw.githubusercontent.com/SSLcom/CTLogs/main/json/apollo2028h1.json"
   ]
 }
