@@ -1,6 +1,6 @@
 # validate.py and make_roots.py, pinned with every transitive dependency's hashes for pip --require-hashes.
 # Regenerate under the runner's Python (3.12): pip-compile --generate-hashes --strip-extras on
-# "jsonschema==4.26.0" and "cryptography==48.0.0".
+# "jsonschema==4.26.0" and "cryptography==50.0.0".
 attrs==26.1.0 \
     --hash=sha256:c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309 \
     --hash=sha256:d03ceb89cb322a8fd706d4fb91940737b6642aa36998fe130a9bc96c985eff32
@@ -109,7 +109,7 @@ cffi==2.1.1 \
     --hash=sha256:fb92203a88b3d3053034db775110081c49d28be6551923805e039924093761e4 \
     --hash=sha256:fcd22650c908d7b7da162bbfaab594a1227a15d1643a98c68b122ac642fa2264
     # via cryptography
-cryptography==48.0.0 \
+cryptography==50.0.0 \
     --hash=sha256:0890f502ddf7d9c6426129c3f49f5c0a39278ed7cd6322c8755ffca6ee675a13 \
     --hash=sha256:0c558d2cdffd8f4bbb30fc7134c74d2ca9a476f830bb053074498fbc86f41ed6 \
     --hash=sha256:16cd65b9330583e4619939b3a3843eec1e6e789744bb01e7c7e2e62e33c239c8 \
