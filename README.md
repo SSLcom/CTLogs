@@ -8,6 +8,10 @@ SSL.com's CT logs are powered by [TesseraCT](https://github.com/transparency-dev
 
 [Mercury](crt/mercury) logs accept only Mark Certificates (VMC and CMC) used for [BIMI](https://bimigroup.org/). They are temporally sharded by certificate expiry and are applying for inclusion in the Apple CT log program.
 
+## TLS logs
+
+[Apollo](crt/apollo) logs accept publicly trusted TLS certificates. They are temporally sharded by certificate expiry, in half-year shards, and are applying for inclusion in the Chrome and Apple CT log programs.
+
 ## Metadata
 
 | File | Schema | Purpose |
@@ -16,6 +20,9 @@ SSL.com's CT logs are powered by [TesseraCT](https://github.com/transparency-dev
 | [`json/mercury2026.json`](json/mercury2026.json) | [log_schema_v2](https://googlechrome.github.io/CertificateTransparency/log_schema_v2.json) | Mercury 2026 shard |
 | [`json/mercury2027.json`](json/mercury2027.json) | [log_schema_v2](https://googlechrome.github.io/CertificateTransparency/log_schema_v2.json) | Mercury 2027 shard |
 | [`json/mercury2028.json`](json/mercury2028.json) | [log_schema_v2](https://googlechrome.github.io/CertificateTransparency/log_schema_v2.json) | Mercury 2028 shard |
+| [`json/apollo2027h1.json`](json/apollo2027h1.json) | [log_schema_v2](https://googlechrome.github.io/CertificateTransparency/log_schema_v2.json) | Apollo 2027h1 shard |
+| [`json/apollo2027h2.json`](json/apollo2027h2.json) | [log_schema_v2](https://googlechrome.github.io/CertificateTransparency/log_schema_v2.json) | Apollo 2027h2 shard |
+| [`json/apollo2028h1.json`](json/apollo2028h1.json) | [log_schema_v2](https://googlechrome.github.io/CertificateTransparency/log_schema_v2.json) | Apollo 2028h1 shard |
 
 Accepted roots per log family are in [`pem/`](pem) and [`tsv/`](tsv), one certificate per file in [`crt/<family>/`](crt). Each log's `get-roots` endpoint is authoritative; these files are generated from it.
 

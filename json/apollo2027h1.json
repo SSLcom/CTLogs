@@ -1,0 +1,24 @@
+{
+  "$schema": "https://googlechrome.github.io/CertificateTransparency/log_schema_v2.json",
+  "log_id": "bVLqboyjva5WKR2XpjBVWj1RTSOX0b7TBDE1kdclJz8=",
+  "key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEheHl9fk96mWRtpdnHJl9AuBX9JoCCCbCeNaieRvr2gedrBm6GkwFwR/l1xowqmh92Uh/J13p4whgNiNYI2ni9w==",
+  "friendly_name": "Apollo 2027h1",
+  "log_spec": "static-ct-api",
+  "mmd_seconds": 60,
+  "intended_use": "production",
+  "temporal_interval": {
+    "start_inclusive": "2027-01-01T00:00:00Z",
+    "end_exclusive": "2027-07-01T00:00:00Z"
+  },
+  "status": "active",
+  "status_timestamp": "2026-11-12T00:00:00Z",
+  "log_software": {
+    "name": "TesseraCT"
+  },
+  "submission_endpoint": {
+    "url": "https://log.apollo.ct.ssl.com/2027h1/"
+  },
+  "monitoring_endpoint": {
+    "url": "https://mon.apollo.ct.ssl.com/2027h1/"
+  }
+}
