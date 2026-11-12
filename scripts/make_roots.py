@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Rebuilds crt/<family>/, pem/ and tsv/ from what the family's active shards actually serve.
-Usage: scripts/make_roots.py <family>   (e.g. mercury; reads json/<family>*.json)"""
+Usage: scripts/make_roots.py <family>   (e.g. mercury; reads json/<family>*.json)
+       scripts/make_roots.py --all      (every family with a json/<family><shard>.json file)"""
 import base64
 import hashlib
 import json
 import pathlib
+import re
+import subprocess
 import sys
 import urllib.request
 
@@ -15,8 +18,16 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 SHORT = {"countryName": "C", "stateOrProvinceName": "ST", "localityName": "L",
          "organizationName": "O", "organizationalUnitName": "OU", "commonName": "CN"}
 
+# Families come from the shard files, so CI checks a new family's roots without a workflow edit.
+if sys.argv[1:] == ["--all"]:
+    families = sorted({m[1] for p in (ROOT / "json").glob("*.json") if (m := re.match(r"([a-z]+)\d", p.name))})
+    if not families:
+        sys.exit("no json/<family><shard>.json file")
+    # Every family runs even after one fails, so one half-finished publish hides no other family's drift.
+    sys.exit(max(subprocess.run([sys.executable, __file__, f]).returncode for f in families))
+
 if len(sys.argv) != 2:
-    sys.exit("usage: scripts/make_roots.py <family>")
+    sys.exit("usage: scripts/make_roots.py <family> | --all")
 family = sys.argv[1]
 
 shards = [json.loads(p.read_text()) for p in sorted((ROOT / "json").glob(f"{family}*.json"))]
