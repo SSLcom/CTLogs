@@ -23,6 +23,7 @@ SSL.com's CT logs are powered by [TesseraCT](https://github.com/transparency-dev
 | [`json/apollo2027h1.json`](json/apollo2027h1.json) | [log_schema_v2](https://googlechrome.github.io/CertificateTransparency/log_schema_v2.json) | Apollo 2027h1 shard |
 | [`json/apollo2027h2.json`](json/apollo2027h2.json) | [log_schema_v2](https://googlechrome.github.io/CertificateTransparency/log_schema_v2.json) | Apollo 2027h2 shard |
 | [`json/apollo2028h1.json`](json/apollo2028h1.json) | [log_schema_v2](https://googlechrome.github.io/CertificateTransparency/log_schema_v2.json) | Apollo 2028h1 shard |
+| [`json/apollo2028h2.json`](json/apollo2028h2.json) | [log_schema_v2](https://googlechrome.github.io/CertificateTransparency/log_schema_v2.json) | Apollo 2028h2 shard |
 
 Accepted roots per log family are in [`pem/`](pem) and [`tsv/`](tsv), one certificate per file in [`crt/<family>/`](crt). Each log's `get-roots` endpoint is authoritative; these files are generated from it.
 
