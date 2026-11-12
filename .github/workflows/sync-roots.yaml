@@ -1,0 +1,57 @@
+---
+name: Sync accepted roots
+
+on:
+  # Daily, so a root the logs started serving reaches the published lists within a day, as a reviewed PR.
+  schedule:
+    - cron: "41 7 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: sync-roots
+
+permissions:
+  contents: write
+  pull-requests: write
+  # A PR opened with GITHUB_TOKEN triggers no pull_request run; dispatching validate is the exception that does.
+  actions: write
+
+env:
+  BRANCH: roots-sync
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install tools
+        run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet --require-hashes -r scripts/requirements.txt
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
+
+      - name: Regenerate the root lists from every family's live get-roots
+        run: python3 scripts/make_roots.py --all
+
+      - name: Open or update the roots-sync PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git add -A -- crt pem tsv
+          if git diff --cached --quiet; then
+            echo "Published root lists already match the live logs."
+            exit 0
+          fi
+          changed=$(git diff --cached --name-only -- crt | cut -d/ -f2 | sort -u | paste -sd, -)
+          changed=${changed:-all}
+          git -c user.name="github-actions[bot]" -c user.email="41898283+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "roots: sync ${changed} accepted roots from the live get-roots — the logs already serve this set"
+          # One standing branch, rebuilt from main each run, so a day's change never stacks on a stale one.
+          git push --force origin "HEAD:refs/heads/${BRANCH}"
+          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
+            gh pr create --head "$BRANCH" --base main \
+              --title "roots: sync ${changed} accepted roots from the live logs" \
+              --body "The logs already serve this root set; this updates the published lists in crt/, pem/ and tsv/ to match. Check each added or removed root against the approved-roots change that published it before merging."
+          fi
+          gh workflow run validate.yaml --ref "$BRANCH"
