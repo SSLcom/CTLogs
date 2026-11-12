@@ -1,15 +1,29 @@
 #!/usr/bin/env python3
 """Checks every file in json/ against Chrome's CT schemas and against itself.
-Usage: scripts/validate.py [--live]   (--live also checks each active static-ct log's checkpoint origin)"""
+Usage: scripts/validate.py [--live] [--base REF]
+  --live      also checks each active static-ct log's live checkpoint: its origin, and its signature by the published key
+  --base REF  also refuses a change, against REF, to a published log's key, log_id, endpoints or temporal_interval"""
+import argparse
 import base64
 import hashlib
 import json
 import pathlib
+import struct
+import subprocess
 import sys
 import urllib.request
 from datetime import datetime
 
 import jsonschema
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
+from cryptography.hazmat.primitives.serialization import load_der_public_key
+
+ap = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
+ap.add_argument("--live", action="store_true")
+ap.add_argument("--base", metavar="REF")
+args = ap.parse_args()
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 JSON_DIR = ROOT / "json"
@@ -87,22 +101,102 @@ for family, members in families.items():
         if not 89 <= days <= 366:
             fail(f"{name}: expiry range is {days} days, outside Chrome's 3-12 months")
 
-if "--live" in sys.argv:
+# A published log's identity never changes: log programs and monitors pin it, and a new key or
+# range is a new log. Deleting the file breaks the URL the operator list handed out.
+IDENTITY = ("key", "log_id", "submission_endpoint", "monitoring_endpoint", "temporal_interval")
+
+
+def git(*argv):
+    return subprocess.run(["git", "-C", str(ROOT), *argv], check=True, capture_output=True, text=True).stdout
+
+
+if args.base:
+    try:
+        git("rev-parse", "--verify", "--quiet", f"{args.base}^{{commit}}")
+        published = git("ls-tree", "--name-only", args.base, "json/").split()
+    except subprocess.CalledProcessError:
+        # A gate: an unreadable base must fail, never read as "nothing published".
+        fail(f"--base {args.base} is not a commit in this checkout; fetch it")
+        published = []
+    for name in published:
+        path = ROOT / name
+        if not name.endswith(".json") or path.name.endswith("-operator.json"):
+            continue
+        old = json.loads(git("show", f"{args.base}:{name}"))
+        new = logs.get(path)
+        if new is None:
+            fail(f"{path.name} is published at {args.base} and deleted here; retire a log by its status")
+            continue
+        for field in IDENTITY:
+            if old.get(field) != new.get(field):
+                fail(f"{path.name}: {field} differs from {args.base} ({old.get(field)!r} -> {new.get(field)!r}); a published log's identity never changes")
+
+
+def check_checkpoint(name, log, note, origin):
+    """C2SP static-ct-api: a signed note whose RFC6962NoteSignature, under the log's key, covers the tree head."""
+    body, sep, sig_lines = note.partition("\n\n")
+    lines = body.split("\n")
+    if not sep or not note.endswith("\n") or len(lines) != 3:
+        # The RFC 6962 signature covers only size and root, so extension lines would be unsigned.
+        return fail(f"{name}: live checkpoint is not origin, size, root hash and signatures")
+    size, root = lines[1], lines[2]
+    try:
+        root = base64.b64decode(root, validate=True)
+    except ValueError:
+        root = b""
+    if not size.isdigit() or (size != "0" and size.startswith("0")) or len(root) != 32:
+        return fail(f"{name}: live checkpoint has a malformed tree size or root hash")
+    key_der = base64.b64decode(log["key"])
+    key = load_der_public_key(key_der)
+    # Key ID: SHA-256(key name || "\n" || 0x05 || log ID)[:4], the key name being the origin.
+    key_id = hashlib.sha256(origin.encode() + b"\n\x05" + hashlib.sha256(key_der).digest()).digest()[:4]
+    for line in sig_lines.rstrip("\n").split("\n"):
+        parts = line.split(" ")
+        if len(parts) != 3 or parts[0] != "\u2014" or parts[1] != origin:
+            continue  # someone else's line, e.g. a witness cosignature
+        try:
+            raw = base64.b64decode(parts[2], validate=True)
+        except ValueError:
+            continue
+        if raw[:4] != key_id or len(raw) < 16:
+            continue
+        # timestamp u64, then a DigitallySigned: hash alg, signature alg, u16 length, signature.
+        timestamp, hash_alg, sig_alg, n = struct.unpack(">QBBH", raw[4:16])
+        sig = raw[16:]
+        if hash_alg != 4 or len(sig) != n:
+            return fail(f"{name}: live checkpoint signature is not a SHA-256 DigitallySigned")
+        # RFC 6962 TreeHeadSignature: v1, tree_hash, timestamp, tree_size, root hash.
+        signed = struct.pack(">BBQQ", 0, 1, timestamp, int(size)) + root
+        try:
+            if isinstance(key, ec.EllipticCurvePublicKey) and sig_alg == 3:
+                key.verify(sig, signed, ec.ECDSA(hashes.SHA256()))
+            elif isinstance(key, rsa.RSAPublicKey) and sig_alg == 1:
+                key.verify(sig, signed, padding.PKCS1v15(), hashes.SHA256())
+            else:
+                return fail(f"{name}: live checkpoint signature algorithm {sig_alg} does not match the published key")
+        except InvalidSignature:
+            return fail(f"{name}: live checkpoint signature does not verify under the published key")
+        return print(f"ok    {name}: live checkpoint {origin} size {size}, signed by the published key")
+    fail(f"{name}: live checkpoint has no signature by {origin} with the published key's ID")
+
+
+if args.live:
     for path, log in logs.items():
         if log.get("status") != "active" or log.get("log_spec") != "static-ct-api":
             continue
         sub = log["submission_endpoint"]["url"]
         try:
-            origin = fetch(log["monitoring_endpoint"]["url"] + "checkpoint").decode().split("\n", 1)[0]
+            note = fetch(log["monitoring_endpoint"]["url"] + "checkpoint").decode()
         except Exception as e:
             fail(f"{path.name}: cannot fetch checkpoint: {e}")
             continue
         # static-ct-api: the checkpoint origin is the submission prefix without scheme or trailing slash.
         want = sub.split("://", 1)[1].rstrip("/")
+        origin = note.split("\n", 1)[0]
         if origin != want:
             fail(f"{path.name}: live checkpoint origin is {origin!r}, metadata implies {want!r}")
-        else:
-            print(f"ok    {path.name}: live checkpoint origin {origin}")
+            continue
+        check_checkpoint(path.name, log, note, want)
 
 checked = len(operators) + len(logs)
 print(f"\n{checked} file(s) checked, {len(failures)} failure(s)")
