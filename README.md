@@ -21,10 +21,10 @@ Accepted roots per log family are in [`pem/`](pem) and [`tsv/`](tsv), one certif
 
 ## Maintaining
 
-Every change goes through a pull request; CI validates it (`scripts/validate.py --live`).
+Every change goes through a pull request; CI validates it (`scripts/validate.py --live --base <PR base>`). Locally: `pip install --require-hashes -r scripts/requirements.txt`, then `scripts/validate.py --live --base origin/main`.
 
 - **Add a shard:** add `json/<log>.json`, add its raw URL to `json/sslcom-operator.json`, and add a row to `crt/<family>/README.md`.
 - **Close a shard:** set its `status` to `readonly` and update `status_timestamp`; move its row to "Inactive log shards".
 - **Roots changed:** run `scripts/make_roots.py <family>` once every active shard serves the new set, and commit the result.
 
-Never change a published log's `key`, `log_id`, endpoints or `temporal_interval`: they are its identity.
+Never change a published log's `key`, `log_id`, endpoints or `temporal_interval`: they are its identity, and `--base` fails a change to any of them.

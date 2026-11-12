@@ -20,12 +20,22 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
+          # Full history, so the base below is always a commit here.
+          fetch-depth: 0
 
       - name: Install tools
-        run: python3 -m pip install --quiet jsonschema cryptography
+        # Exact versions and hashes, in a venv so the runner's own packages never shadow them.
+        run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet --require-hashes -r scripts/requirements.txt
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
 
-      - name: Schemas, log IDs, operator list, expiry ranges and live checkpoint origins
-        run: python3 scripts/validate.py --live
+      - name: Schemas, log IDs, operator list, expiry ranges, published identities and live checkpoints
+        env:
+          # A PR's merge commit's first parent is the base it merges into; a push compares with
+          # what main held before it. Scheduled and manual runs have nothing to compare.
+          BASE: ${{ github.event_name == 'pull_request' && 'HEAD^1' || github.event_name == 'push' && github.event.before || '' }}
+        run: python3 scripts/validate.py --live ${BASE:+--base "$BASE"}
 
       - name: Published root lists match what the logs serve
         run: |
