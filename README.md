@@ -27,6 +27,10 @@ SSL.com's CT logs are powered by [TesseraCT](https://github.com/transparency-dev
 
 Accepted roots per log family are in [`pem/`](pem) and [`tsv/`](tsv), one certificate per file in [`crt/<family>/`](crt). Each log's `get-roots` endpoint is authoritative; these files are generated from it.
 
+## Contact
+
+[ctlogs@ssl.com](mailto:ctlogs@ssl.com), monitored continuously. Incidents are acknowledged within one business day.
+
 ## Maintaining
 
 Every change goes through a pull request; CI validates it (`scripts/validate.py --live --base <PR base>`). Locally: `pip install --require-hashes -r scripts/requirements.txt`, then `scripts/validate.py --live --base origin/main`.

@@ -2,11 +2,23 @@
 
 ## Policy
 
-These logs accept TLS certificates and their precertificates, submitted through `add-chain` or `add-pre-chain`, when the chain verifies to one of the [accepted roots](../../tsv/apollo-ca-roots.tsv) and the notAfter falls inside the shard's expiry range.
+These logs accept TLS certificates and their precertificates, submitted through `add-chain` or `add-pre-chain`, when:
 
-They reject expired certificates. Chains using SHA-1 signatures are accepted. The accepted roots are those trusted for server authentication by the major browser root programs, as listed in CCADB; we update the list from time to time in accordance with this policy.
+- the chain verifies to one of the [accepted roots](../../tsv/apollo-ca-roots.tsv);
+- the notAfter falls inside the shard's expiry range;
+- the leaf contains the id-kp-serverAuth Extended Key Usage (these logs are TLS-only).
+
+They reject expired certificates. Chains using SHA-1 signatures are accepted.
+
+**Accepted roots** are every root in Apple's trust store, and every root the Chrome, Microsoft or Mozilla root programs trust for server authentication, as listed in CCADB. The list is synced from CCADB daily.
+
+**Root removal:** a root that leaves CCADB stays accepted until every shard that was open on that day has ended. A root is removed sooner only for a specific reason, such as key compromise or a CA flooding the log, and that is announced on [ct-policy@chromium.org](https://groups.google.com/a/chromium.org/g/ct-policy) first.
 
 Under heavy load the logs answer `429 Too Many Requests`; submitters should retry with backoff.
+
+## Contact
+
+[ctlogs@ssl.com](mailto:ctlogs@ssl.com), monitored continuously. Incidents are acknowledged within one business day.
 
 ## Status
 

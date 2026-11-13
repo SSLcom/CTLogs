@@ -6,6 +6,7 @@
   "log_spec": "static-ct-api",
   "mmd_seconds": 60,
   "intended_use": "production",
+  "tls_only": true,
   "temporal_interval": {
     "start_inclusive": "2027-01-01T00:00:00Z",
     "end_exclusive": "2027-07-01T00:00:00Z"
