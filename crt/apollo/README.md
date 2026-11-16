@@ -2,13 +2,18 @@
 
 ## Policy
 
-These logs accept TLS certificates and their precertificates, submitted through `add-chain` or `add-pre-chain`, when:
+These logs accept TLS certificates and their precertificates, submitted through `add-chain` or `add-pre-chain`. They are TLS-only.
 
-- the chain verifies to one of the [accepted roots](../../tsv/apollo-ca-roots.tsv);
-- the notAfter falls inside the shard's expiry range;
-- the leaf contains the id-kp-serverAuth Extended Key Usage (these logs are TLS-only).
+The logs reject submissions that:
 
-They reject expired certificates. Chains using SHA-1 signatures are accepted.
+- do not chain, in RFC 6962 order, to a root in the [accepted-roots set](../../tsv/apollo-ca-roots.tsv);
+- have a notAfter outside the shard's temporal interval;
+- are already expired;
+- are not TLS server certificates: the leaf must have the id-kp-serverAuth Extended Key Usage;
+- are submitted to the wrong endpoint (certificate vs. precertificate);
+- are malformed or larger than 512 KiB.
+
+Revocation is not checked. Chains using SHA-1 signatures are accepted.
 
 **Accepted roots** are every root in Apple's trust store, and every root the Chrome, Microsoft or Mozilla root programs trust for server authentication, as listed in CCADB. The list is synced from CCADB daily.
 
