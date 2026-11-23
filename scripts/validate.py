@@ -24,6 +24,8 @@ ap = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
 ap.add_argument("--live", action="store_true")
 ap.add_argument("--base", metavar="REF")
 args = ap.parse_args()
+# Where log programs fetch each log's file: main of this repository, as json/sslcom-operator.json hands it out.
+PUBLISHED = "https://raw.githubusercontent.com/SSLcom/CTLogs/main/json/"
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 JSON_DIR = ROOT / "json"
@@ -64,6 +66,9 @@ for path, op in operators.items():
         jsonschema.validate(op, schema(op["$schema"]), format_checker=jsonschema.FormatChecker())
     except (jsonschema.ValidationError, KeyError) as e:
         fail(f"{path.name}: {getattr(e, 'message', e)}")
+        # The whole URL, not its file name: one pointing at another repo or branch would hand log programs that file.
+        if url != PUBLISHED + name:
+            fail(f"{path.name} lists {url}; every log URL must be {PUBLISHED}<file>")
         continue
     for url in op["logs"]:
         name = url.rsplit("/", 1)[-1]
@@ -103,7 +108,7 @@ for family, members in families.items():
 
 # A published log's identity never changes: log programs and monitors pin it, and a new key or
 # range is a new log. Deleting the file breaks the URL the operator list handed out.
-IDENTITY = ("key", "log_id", "submission_endpoint", "monitoring_endpoint", "temporal_interval")
+IDENTITY = ("key", "log_id", "submission_endpoint", "monitoring_endpoint", "temporal_interval", "mmd_seconds", "log_spec")
 
 
 def git(*argv):

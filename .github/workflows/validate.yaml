@@ -32,9 +32,9 @@ jobs:
 
       - name: Schemas, log IDs, operator list, expiry ranges, published identities and live checkpoints
         env:
-          # A PR's merge commit's first parent is the base it merges into; a push compares with
-          # what main held before it. Scheduled and manual runs have nothing to compare.
-          BASE: ${{ github.event_name == 'pull_request' && 'HEAD^1' || github.event_name == 'push' && github.event.before || '' }}
+          # A PR's merge commit's first parent is the base it merges into; a push compares with what main held before it.
+          # A manual run on a branch compares with main, or its green check would skip the one gate a PR cannot.
+          BASE: ${{ github.event_name == 'pull_request' && 'HEAD^1' || github.event_name == 'push' && github.event.before || github.event_name == 'workflow_dispatch' && github.ref_name != 'main' && 'origin/main' || '' }}
         run: python3 scripts/validate.py --live ${BASE:+--base "$BASE"}
 
       - name: Published root lists match what the logs serve
