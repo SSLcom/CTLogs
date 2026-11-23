@@ -31,12 +31,26 @@ Accepted roots per log family are in [`pem/`](pem) and [`tsv/`](tsv), one certif
 
 [ctlogs@ssl.com](mailto:ctlogs@ssl.com), monitored continuously. Incidents are acknowledged within one business day.
 
+## Monitoring
+
+The [Monitor the logs](.github/workflows/monitor.yaml) workflow checks every log listed here once an hour from GitHub's network, as an outside monitor would (`scripts/monitor.py`):
+
+- the checkpoint is signed by the published key, and was signed within the last ten minutes;
+- the tiles hash to the signed root, and the tree still starts with the checkpoint the previous run verified, which is an RFC 6962 consistency check;
+- `get-roots` answers with the accepted roots;
+- once Chrome monitors a log, its [published availability](https://www.gstatic.com/ct/compliance/min_uptime.csv) stays above 99.5% over 90 days, and above 99% on every endpoint over Chrome's last 24 hours.
+
+A failing check fails the run and is reported to SSL.com's operators. The tiles are compared with the signed roots; the entries are not downloaded and hashed, which a full monitor does.
+
 ## Maintaining
 
-Every change goes through a pull request; CI validates it (`scripts/validate.py --live --base <PR base>`). Locally: `pip install --require-hashes -r scripts/requirements.txt`, then `scripts/validate.py --live --base origin/main`.
+Every change goes through a pull request; CI validates it (`scripts/validate.py --live --base <PR base>`) and runs the unit tests. Locally: `pip install --require-hashes -r scripts/requirements.txt`, then `scripts/validate.py --live --base origin/main` and `python3 -m unittest discover -s scripts -p 'test_*.py'`.
 
 - **Add a shard:** add `json/<log>.json`, add its raw URL to `json/sslcom-operator.json`, and add a row to `crt/<family>/README.md`.
 - **Close a shard:** set its `status` to `readonly` and update `status_timestamp`; move its row to "Inactive log shards".
 - **Roots changed:** run `scripts/make_roots.py <family>` once every active shard serves the new set, and commit the result.
+- **Monitor:** the repository secret `SLACK_WEBHOOK_URL` is where failures go; without it a failure only fails the run. Slack hears when the set of failing checks changes, once a day while it lasts, and when it clears. Run the workflow by hand with `slack_test` to prove the webhook delivers, or `scripts/monitor.py` locally to check without telling anyone.
+- **Monitor state:** the checkpoints each run verified are kept in the Actions cache (`monitor-state-*`). They are signed, so they are verified again before use; deleting the cache costs one run's consistency check.
+- **Monitor limits:** GitHub starts schedules late under load and can skip one. It also switches off a public repository's schedules after 60 days without activity; the workflow's last step re-enables them, which is the known remedy, not a documented guarantee.
 
 Never change a published log's `key`, `log_id`, endpoints or `temporal_interval`: they are its identity, and `--base` fails a change to any of them.

@@ -8,27 +8,24 @@ import base64
 import hashlib
 import json
 import pathlib
-import struct
 import subprocess
 import sys
 import urllib.request
 from datetime import datetime
 
 import jsonschema
-from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
-from cryptography.hazmat.primitives.serialization import load_der_public_key
+
+import ctlog
 
 ap = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
 ap.add_argument("--live", action="store_true")
 ap.add_argument("--base", metavar="REF")
 args = ap.parse_args()
-# Where log programs fetch each log's file: main of this repository, as json/sslcom-operator.json hands it out.
-PUBLISHED = "https://raw.githubusercontent.com/SSLcom/CTLogs/main/json/"
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 JSON_DIR = ROOT / "json"
+# Where log programs fetch each log's file: main of this repository, as json/sslcom-operator.json hands it out.
+PUBLISHED = "https://raw.githubusercontent.com/SSLcom/CTLogs/main/json/"
 failures = []
 
 
@@ -66,12 +63,12 @@ for path, op in operators.items():
         jsonschema.validate(op, schema(op["$schema"]), format_checker=jsonschema.FormatChecker())
     except (jsonschema.ValidationError, KeyError) as e:
         fail(f"{path.name}: {getattr(e, 'message', e)}")
-        # The whole URL, not its file name: one pointing at another repo or branch would hand log programs that file.
-        if url != PUBLISHED + name:
-            fail(f"{path.name} lists {url}; every log URL must be {PUBLISHED}<file>")
         continue
     for url in op["logs"]:
         name = url.rsplit("/", 1)[-1]
+        # The whole URL, not its file name: one pointing at another repo or branch would hand log programs that file.
+        if url != PUBLISHED + name:
+            fail(f"{path.name} lists {url}; every log URL must be {PUBLISHED}<file>")
         # A URL naming no file here would hand log programs a 404.
         if not (JSON_DIR / name).is_file():
             fail(f"{path.name} lists {url}, but json/{name} does not exist")
@@ -137,71 +134,22 @@ if args.base:
                 fail(f"{path.name}: {field} differs from {args.base} ({old.get(field)!r} -> {new.get(field)!r}); a published log's identity never changes")
 
 
-def check_checkpoint(name, log, note, origin):
-    """C2SP static-ct-api: a signed note whose RFC6962NoteSignature, under the log's key, covers the tree head."""
-    body, sep, sig_lines = note.partition("\n\n")
-    lines = body.split("\n")
-    if not sep or not note.endswith("\n") or len(lines) != 3:
-        # The RFC 6962 signature covers only size and root, so extension lines would be unsigned.
-        return fail(f"{name}: live checkpoint is not origin, size, root hash and signatures")
-    size, root = lines[1], lines[2]
-    try:
-        root = base64.b64decode(root, validate=True)
-    except ValueError:
-        root = b""
-    if not size.isdigit() or (size != "0" and size.startswith("0")) or len(root) != 32:
-        return fail(f"{name}: live checkpoint has a malformed tree size or root hash")
-    key_der = base64.b64decode(log["key"])
-    key = load_der_public_key(key_der)
-    # Key ID: SHA-256(key name || "\n" || 0x05 || log ID)[:4], the key name being the origin.
-    key_id = hashlib.sha256(origin.encode() + b"\n\x05" + hashlib.sha256(key_der).digest()).digest()[:4]
-    for line in sig_lines.rstrip("\n").split("\n"):
-        parts = line.split(" ")
-        if len(parts) != 3 or parts[0] != "\u2014" or parts[1] != origin:
-            continue  # someone else's line, e.g. a witness cosignature
-        try:
-            raw = base64.b64decode(parts[2], validate=True)
-        except ValueError:
-            continue
-        if raw[:4] != key_id or len(raw) < 16:
-            continue
-        # timestamp u64, then a DigitallySigned: hash alg, signature alg, u16 length, signature.
-        timestamp, hash_alg, sig_alg, n = struct.unpack(">QBBH", raw[4:16])
-        sig = raw[16:]
-        if hash_alg != 4 or len(sig) != n:
-            return fail(f"{name}: live checkpoint signature is not a SHA-256 DigitallySigned")
-        # RFC 6962 TreeHeadSignature: v1, tree_hash, timestamp, tree_size, root hash.
-        signed = struct.pack(">BBQQ", 0, 1, timestamp, int(size)) + root
-        try:
-            if isinstance(key, ec.EllipticCurvePublicKey) and sig_alg == 3:
-                key.verify(sig, signed, ec.ECDSA(hashes.SHA256()))
-            elif isinstance(key, rsa.RSAPublicKey) and sig_alg == 1:
-                key.verify(sig, signed, padding.PKCS1v15(), hashes.SHA256())
-            else:
-                return fail(f"{name}: live checkpoint signature algorithm {sig_alg} does not match the published key")
-        except InvalidSignature:
-            return fail(f"{name}: live checkpoint signature does not verify under the published key")
-        return print(f"ok    {name}: live checkpoint {origin} size {size}, signed by the published key")
-    fail(f"{name}: live checkpoint has no signature by {origin} with the published key's ID")
-
-
 if args.live:
     for path, log in logs.items():
         if log.get("status") != "active" or log.get("log_spec") != "static-ct-api":
             continue
-        sub = log["submission_endpoint"]["url"]
+        origin = ctlog.origin_of(log)
         try:
             note = fetch(log["monitoring_endpoint"]["url"] + "checkpoint").decode()
         except Exception as e:
             fail(f"{path.name}: cannot fetch checkpoint: {e}")
             continue
-        # static-ct-api: the checkpoint origin is the submission prefix without scheme or trailing slash.
-        want = sub.split("://", 1)[1].rstrip("/")
-        origin = note.split("\n", 1)[0]
-        if origin != want:
-            fail(f"{path.name}: live checkpoint origin is {origin!r}, metadata implies {want!r}")
+        try:
+            cp = ctlog.verify_checkpoint(note, origin, log["key"])
+        except ctlog.CheckpointError as e:
+            fail(f"{path.name}: live checkpoint {e}")
             continue
-        check_checkpoint(path.name, log, note, want)
+        print(f"ok    {path.name}: live checkpoint {origin} size {cp.size}, signed by the published key")
 
 checked = len(operators) + len(logs)
 print(f"\n{checked} file(s) checked, {len(failures)} failure(s)")

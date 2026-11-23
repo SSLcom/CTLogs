@@ -1,0 +1,82 @@
+---
+name: Monitor the logs
+
+on:
+  # Hourly, from GitHub's network: the logs' own alerting runs inside the cluster that serves them, so it is silent when
+  # that cluster is down. GitHub starts schedules late under load and may skip one; a run every hour absorbs that.
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      slack_test:
+        description: "Also post one test message to Slack, to prove the webhook still delivers"
+        type: boolean
+        default: false
+
+concurrency:
+  group: monitor
+  # A run holds the checkpoints the next one compares with, so one must finish before another starts.
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      # Only for the last step, which re-enables a schedule.
+      actions: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Install tools
+        # Exact versions and hashes, in a venv so the runner's own packages never shadow them.
+        run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet --require-hashes -r scripts/requirements.txt
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
+
+      # Cache keys are write-once, so each run saves under its own and restores the newest. A lost cache costs one
+      # run's comparison, never a false alarm: the remembered checkpoints are signed and are verified again before use.
+      - name: Restore what the last run saw
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: .monitor
+          key: monitor-state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: monitor-state-
+
+      - name: Check every log from outside
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SLACK_TEST: ${{ inputs.slack_test && '--slack-test' || '' }}
+        run: python3 scripts/monitor.py --state .monitor/state.json $SLACK_TEST
+
+      # always(): a failing run is the one whose state matters, or Slack would hear of the same failure every hour.
+      - name: Keep what this run saw
+        if: always()
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: .monitor
+          key: monitor-state-${{ github.run_id }}-${{ github.run_attempt }}
+
+      # GitHub switches off a public repository's schedules after 60 days without activity, and tells nobody. Enabling this
+      # one every run keeps it on; the others are enabled only when GitHub, never a person, was what switched them off.
+      - name: Keep the schedules running
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh workflow enable monitor.yaml
+          gh workflow list --all --json path,state --jq '.[] | select(.state == "disabled_inactivity") | .path' |
+            while read -r wf; do
+              gh workflow enable "${wf##*/}"
+              echo "::warning::Re-enabled ${wf##*/}: GitHub had switched it off for inactivity"
+            done

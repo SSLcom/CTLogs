@@ -30,6 +30,9 @@ jobs:
           "$RUNNER_TEMP/venv/bin/pip" install --quiet --require-hashes -r scripts/requirements.txt
           echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
 
+      - name: Unit tests of the checkpoint, tile and monitor code
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+
       - name: Schemas, log IDs, operator list, expiry ranges, published identities and live checkpoints
         env:
           # A PR's merge commit's first parent is the base it merges into; a push compares with what main held before it.
