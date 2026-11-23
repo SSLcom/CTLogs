@@ -10,12 +10,13 @@ The logs reject submissions that:
 - have a notAfter outside the shard's temporal interval;
 - are already expired;
 - are not TLS server certificates: the leaf must have the id-kp-serverAuth Extended Key Usage;
+- contain a certificate, the root included, whose public key is not RSA or ECDSA, or that is signed with an algorithm other than RSA or ECDSA (for example Ed25519 or ML-DSA), as [Chrome's CT log policy](https://googlechrome.github.io/CertificateTransparency/log_policy.html) requires;
 - are submitted to the wrong endpoint (certificate vs. precertificate);
 - are malformed or larger than 512 KiB.
 
 Revocation is not checked. Chains using SHA-1 signatures are accepted.
 
-**Accepted roots** are every root in Apple's trust store, and every root the Chrome, Microsoft or Mozilla root programs trust for server authentication, as listed in CCADB. The list is synced from CCADB daily.
+**Accepted roots** are the roots in Apple's trust store, and the roots the Chrome, Microsoft or Mozilla root programs trust for server authentication, as listed in CCADB, that have an RSA or ECDSA key and are themselves signed with RSA or ECDSA. The list is synced from CCADB daily.
 
 **Root removal:** a root that leaves CCADB stays accepted until every shard that was open on that day has ended. A root is removed sooner only for a specific reason, such as key compromise or a CA flooding the log, and that is announced on [ct-policy@chromium.org](https://groups.google.com/a/chromium.org/g/ct-policy) first.
 
